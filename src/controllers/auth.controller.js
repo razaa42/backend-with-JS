@@ -1,0 +1,18 @@
+import User from "../models/User.model.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import ApiError from "../utils/ApiError.js";
+import ApiResponse from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
+
+export const loginUser= asyncHandler(async(requestAnimationFrame, res)=>{
+    const {email, password}=requestAnimationFrame.body;
+    if(!email || !password)throw new ApiError(400, "email and password required")
+
+    const user = await User.findOne({email}).select("password");
+    if(!user) throw new ApiError(401, "invalidcredentials");
+    const token =jwt.sign({id: user._id, email: user.email}, process.env.JWT_SECRET,{
+        expiresIn: "1d"
+    });
+    
+    res.status(200).json(new ApiResponse(200, {user, token}, "Login successfully"));
+});
