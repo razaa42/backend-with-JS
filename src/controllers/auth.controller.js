@@ -4,15 +4,33 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
-export const loginUser= asyncHandler(async(requestAnimationFrame, res)=>{
-    const {email, password}=requestAnimationFrame.body;
-    if(!email || !password)throw new ApiError(400, "email and password required")
+export const loginUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
 
-    const user = await User.findOne({email}).select("password");
-    if(!user) throw new ApiError(401, "invalidcredentials");
-    const token =jwt.sign({id: user._id, email: user.email}, process.env.JWT_SECRET,{
-        expiresIn: "1d"
-    });
-    
-    res.status(200).json(new ApiResponse(200, {user, token}, "Login successfully"));
+    if (!email || !password) {
+        throw new ApiError(400, "Email and password required");
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) {
+        throw new ApiError(401, "Invalid credentials");
+    }
+
+    const isMatch = await user.isPasswordValid(password);
+    if (!isMatch) {
+        throw new ApiError(401, "Invalid credentials");
+    }
+
+    const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+    );
+
+    user.password = undefined;
+
+    res.status(200).json(
+        new ApiResponse(200, { user, token }, "Login successfully")
+    );
 });
+
